@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import os 
 
+print("a")
+
 
 # One Hot Encoding
 def one_hot_encoding(Yin):
