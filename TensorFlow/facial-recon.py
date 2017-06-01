@@ -15,6 +15,8 @@ def main():
     INPUTS = DATA[:, 1]
     TARGETS = DATA[:, 0]
 
+    print(INPUTS)
+
     # DATA = 0D Emotion, 1D 48*48 Long Image, String Usage
 
 
