@@ -8,6 +8,41 @@ from datetime import datetime
 from sklearn.utils import shuffle
 
 
+def getData(balance_ones=True):
+    # images are 48x48 = 2304 size vectors
+    # N = 35887
+    Y = []
+    X = []
+    first = True
+    for line in open('./TensorFlow/fer.csv'):
+        if first:
+            first = False
+        else:
+            row = line.split(',')
+            Y.append(int(row[0]))
+            X.append([int(p) for p in row[1].split()])
+
+    X, Y = np.array(X) / 255.0, np.array(Y)
+
+    if balance_ones:
+        # balance the 1 class
+        X0, Y0 = X[Y!=1, :], Y[Y!=1]
+        X1 = X[Y==1, :]
+        X1 = np.repeat(X1, 9, axis=0)
+        X = np.vstack([X0, X1])
+        Y = np.concatenate((Y0, [1]*len(X1)))
+
+    return X, Y
+
+
+def getImageData():
+    X, Y = getData()
+    N, D = X.shape
+    d = int(np.sqrt(D))
+    X = X.reshape(N, 1, d, d)
+    return X, Y
+
+
 def init_filter(shape, poolsz=(2,2)):
     w = np.random.randn(*shape) / np.sqrt(np.prod(shape[:-1]) + shape[-1]*np.prod(shape[:-2] / np.prod(poolsz)))
     # return tf.truncated_normal(shape, stddev=0.1)
@@ -25,37 +60,36 @@ def init_bias(M2):
 def error_rate(targets, predictions):
     return np.mean(targets != predictions)
 
+def accuracy_rate(targets, predictions):
+    return np.mean(targets == predictions)
+
+def y2indicator(y):
+    N = len(y)
+    K = len(set(y))
+    ind = np.zeros((N, K))
+    for i in range(N):
+        ind[i, y[i]] = 1
+    return ind
+
 
 def main():
-    file = os.path.dirname(os.path.realpath(__file__)) + '\\fer.csv'
-    d = pd.read_csv(file)
-    # print(d.info())
-    d_training = d[d['Usage'] == 'Training']
-    d_test = d[d['Usage'] == 'PrivateTest']
+    X, Y = getImageData()
+    X, Y = shuffle(X, Y)
+    X = X.astype(np.float32)
+    Y = y2indicator(Y).astype(np.float32)
+    # reshape X for tf: N x w x h x c
+    X = X.transpose((0, 2, 3, 1))
+    N, width, height, c = X.shape
 
 
-    # TensorFlow Session
-    session = tf.InteractiveSession()
-
-
-    DATA_TEST = d_test.as_matrix()
-    DATA = d_training.as_matrix()
-    inputs_data = DATA[:, 1]
-    # One Hot Encoding
-    targets_data = tf.one_hot(DATA[:, 0], 7).eval()
-    # inputs_data, targets_data = shuffle(inputs_data, targets_data)
-    inputs_data = [i.split(' ') for i in inputs_data]
-
-
-    # Make batches from the data
-    n = 20
-    i_batches = np.array([inputs_data[i:i + n] for i in range(0, len(inputs_data), n)])
-    t_batches = np.array([targets_data[i:i + n] for i in range(0, len(targets_data), n)])
+    Xvalid, Yvalid = X[-1000:], Y[-1000:]
+    X, Y = X[:-1000], Y[:-1000]
+    Yvalid_flat = np.argmax(Yvalid, axis=1) # for calculating error rate
 
     # DATA = 0D 0-6 Emotion, 1D 48*48 Long Image, String Usage
 
-    INPUTS = tf.placeholder(tf.float32, shape=[None, 48*48])
-    TARGETS = tf.placeholder(tf.float32, shape=[None, 7])
+    INPUTS = tf.placeholder(tf.float32, shape=(None, width, height, c))
+    TARGETS = tf.placeholder(tf.float32, shape=(None, 7))
 
     x_image = tf.reshape(INPUTS, [-1, 48, 48, 1])
 
@@ -104,6 +138,8 @@ def main():
 
     OUTPUT = tf.matmul(h_fc2, W_fc3) + b_fc3
 
+    prediction = tf.argmax(OUTPUT,1)
+
     # Calculate Cross-entropy error
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=TARGETS, logits=OUTPUT))
 
@@ -112,25 +148,27 @@ def main():
 
     # Compare network output vs target
     correct_prediction = tf.equal(tf.argmax(OUTPUT,1), tf.argmax(TARGETS,1))
-
     # Cast bools to float32 and take the mean
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+    session = tf.InteractiveSession()
     session.run(tf.global_variables_initializer())
 
+    batch_sz = 30
+    n_batches = N // batch_sz
     for i in range(3):
-        x = random.choice(range(len(i_batches)))
-        train_accuracy = accuracy.eval(feed_dict={INPUTS: i_batches[x], TARGETS: t_batches[x], keep_prob: 1.0})
-        print("step %d, training accuracy %g"%(i, train_accuracy))
         t0 = datetime.now()
-        for l in range(len(i_batches)):
-            i_batch = i_batches[l]
-            t_batch = t_batches[l]
-            train_step.run(feed_dict={INPUTS: i_batch, TARGETS: t_batch, keep_prob: 1.0})
-            if (l % 20 == 0):
-                train_accuracy = accuracy.eval(feed_dict={INPUTS: t_batches[x], TARGETS: t_batches[x], keep_prob: 1.0})
-                print("step %d, training accuracy %g"%(i, train_accuracy))
-
+        for j in range(n_batches):
+            Xbatch = X[j*batch_sz:(j*batch_sz+batch_sz)]
+            Ybatch = Y[j*batch_sz:(j*batch_sz+batch_sz)]
+            train_step.run(feed_dict={INPUTS: Xbatch, TARGETS: Ybatch, keep_prob: 0.75})
+            if (j % 20 == 0):
+                #train_accuracy = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid, keep_prob: 1.0})
+                p = session.run(prediction, feed_dict={INPUTS: Xvalid, TARGETS: Yvalid})
+                e = error_rate(Yvalid_flat, p)
+                a = accuracy_rate(Yvalid_flat, p)
+                a2 = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid, keep_prob: 1.0})
+                print("step: ", i, " error rate: ", e, " accuracy rate 1: ", a, " accuracy rate 2: ", a2)
         dt1 = datetime.now() - t0
         print(dt1.total_seconds())
 
