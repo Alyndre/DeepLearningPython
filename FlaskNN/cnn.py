@@ -30,7 +30,10 @@ class HiddenLayer(object):
 
 
 class CNN(object):
-    def __init__(self, conv_layer_sizes, hidden_layer_sizes):
+    def __init__(self, conv_layer_sizes, hidden_layer_sizes, output_shape):
+        x, y = output_shape
+        self.W = tf.Variable(tf.truncated_normal(output_shape, stddev=0.1))
+        self.B = tf.Variable(tf.constant(0.1, shape=[y]))
         self.convpool_layers = []
         self.hidden_layers = []
         # [5, 5, 1, 20]
@@ -43,10 +46,20 @@ class CNN(object):
             layer = HiddenLayer(input_c, output_c)
             self.hidden_layers.append(layer)
 
-    def preditc(self, X):
+    def predict(self, X):
         Z = X
         for convolution in self.convpool_layers:
-            Z = convolution.forward(X)
+            Z = convolution.forward(Z, pool=[2, 2]) # Can add pooling here
+
+        Z_shape = Z.get_shape().as_list()
+        Z = tf.reshape(Z, [-1, np.prod(Z_shape[1:])])
+
+        for hidden in self.hidden_layers:
+            Z = hidden.forward(Z)
+
+        Z = tf.matmul(Z, self.W) + self.B
+        prediction = tf.argmax(Z, 1)
+        return prediction
 
     def train(self):
         pass
