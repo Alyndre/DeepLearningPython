@@ -65,22 +65,22 @@ class CNN(object):
         prediction = tf.argmax(Z, 1)
         return prediction
 
-    def train(self, epochs, batch_sz, learning_rate = 10e-4, decay = 0.99999, momentum = 0.99):
-        X, Y = getImageData()
+    def train(self, data, epochs, batch_sz, learning_rate = 10e-4, decay = 0.99999, momentum = 0.99):
+        X, Y = data #getImageData()
         X, Y = shuffle(X, Y)
         X = X.astype(np.float32)
         Y = y2indicator(Y).astype(np.float32)
+        K = len(set(Y))
         # reshape X for tf: N x w x h x c
         X = X.transpose((0, 2, 3, 1))
         N, width, height, c = X.shape
-
 
         Xvalid, Yvalid = X[-1000:], Y[-1000:]
         X, Y = X[:-1000], Y[:-1000]
         Yvalid_flat = np.argmax(Yvalid, axis=1) # for calculating error rate
 
         INPUTS = tf.placeholder(tf.float32, shape=(None, width, height, c))
-        TARGETS = tf.placeholder(tf.float32, shape=(None, 7))
+        TARGETS = tf.placeholder(tf.float32, shape=(None, K))
 
         OUTPUTS = self.forward(INPUTS)
         prediction = self.predic(INPUTS)
