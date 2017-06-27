@@ -46,6 +46,9 @@ class CNN(object):
             layer = HiddenLayer(input_c, output_c)
             self.hidden_layers.append(layer)
 
+    def salute(self):
+        return "Hello!"
+
     def forward(self, X):
         Z = X
         for convolution in self.convpool_layers:
