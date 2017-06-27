@@ -68,6 +68,15 @@ class CNN(object):
         prediction = tf.argmax(Z, 1)
         return prediction
 
+    def trainRMSProp(self, data, epochs, batch_sz, learning_rate = 10e-4, decay = 0.99999, momentum = 0.99):
+        pass
+
+    def trainAdamOptimizer(self, data, epochs, batch_sz, learning_rate = 1e-2):
+        pass
+
+    def initTrainParams():
+        pass
+
     def train(self, data, epochs, batch_sz, learning_rate = 10e-4, decay = 0.99999, momentum = 0.99):
         X, Y = data #getImageData()
         X, Y = shuffle(X, Y)
