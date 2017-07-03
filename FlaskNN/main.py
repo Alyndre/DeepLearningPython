@@ -13,5 +13,10 @@ def train():
     global cnn
     return jsonify(cnn.salute())
 
+@app.route("/predict")
+def predict():
+    global cnn
+    return jsonify(cnn.salute())
+
 if __name__ == '__main__':
     app.run()

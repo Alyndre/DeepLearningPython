@@ -147,7 +147,7 @@ def main():
     train_step = tf.train.RMSPropOptimizer(10e-4, decay=0.99999, momentum=0.99).minimize(cross_entropy) # tf.train.AdamOptimizer(1e-2).minimize(cross_entropy)
 
     # Compare network output vs target
-    correct_prediction = tf.equal(tf.argmax(OUTPUT,1), tf.argmax(TARGETS,1))
+    correct_prediction = tf.equal(prediction, tf.argmax(TARGETS,1))
     # Cast bools to float32 and take the mean
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
