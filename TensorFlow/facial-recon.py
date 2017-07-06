@@ -5,7 +5,7 @@ import tensorflow as tf
 import random
 
 from datetime import datetime
-from sklearn.utils import shuffle
+# from sklearn.utils import shuffle
 
 
 def getData(balance_ones=True):
@@ -14,7 +14,7 @@ def getData(balance_ones=True):
     Y = []
     X = []
     first = True
-    for line in open('./TensorFlow/fer.csv'):
+    for line in open('./fer.csv'):
         if first:
             first = False
         else:
@@ -74,7 +74,7 @@ def y2indicator(y):
 
 def main():
     X, Y = getImageData()
-    X, Y = shuffle(X, Y)
+    # X, Y = shuffle(X, Y)
     X = X.astype(np.float32)
     Y = y2indicator(Y).astype(np.float32)
     # reshape X for tf: N x w x h x c
