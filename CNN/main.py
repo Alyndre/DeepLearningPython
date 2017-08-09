@@ -1,8 +1,6 @@
-from cnn.cnn import CNN
-from flask import Flask, jsonify
+from cnn import CNN
 import matplotlib.pyplot as plt
 
-app = Flask(__name__)
 cnn = CNN([(5, 5, 1, 20), (5, 5, 20, 20)], [(500, 300)], [300, 7])
 
 def getData(balance_ones=True):
@@ -11,11 +9,13 @@ def getData(balance_ones=True):
     Y = []
     X = []
     first = True
-    for line in open('./data/fer2013.csv'):
+    for line in open('data/fer.csv'):
         if first:
             first = False
         else:
+            line.rstrip('\x00')
             row = line.split(',')
+            row[0].replace('\x00','')
             Y.append(int(row[0]))
             X.append([int(p) for p in row[1].split()])
 
@@ -42,7 +42,7 @@ def getImageData():
 label_map = ['Anger', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral']
 
 def showImages():
-    X, Y = getData(balance_ones=False)
+    X, Y = getImageData()
 
     while True:
         for i in range(7):
@@ -56,21 +56,6 @@ def showImages():
         if prompt == 'Y':
             break
 
-@app.route("/")
-def hello():
-    return "Hello World!"
-
-@app.route("/train")
-def train():
-    global cnn
-    cnn.train(getImageData())
-    return jsonify(cnn.salute())
-
-@app.route("/predict")
-def predict():
-    #global cnn
-    showImages()
-    return jsonify("salut")
 
 if __name__ == '__main__':
-    app.run()
+    showImages()
