@@ -1,5 +1,6 @@
 from cnn import CNN
 import matplotlib.pyplot as plt
+import numpy as np
 
 cnn = CNN([(5, 5, 1, 20), (5, 5, 20, 20)], [(500, 300)], [300, 7])
 
@@ -9,13 +10,11 @@ def getData(balance_ones=True):
     Y = []
     X = []
     first = True
-    for line in open('data/fer.csv'):
+    for line in open('data/fer2013.csv'):
         if first:
             first = False
         else:
-            line.rstrip('\x00')
             row = line.split(',')
-            row[0].replace('\x00','')
             Y.append(int(row[0]))
             X.append([int(p) for p in row[1].split()])
 
@@ -58,4 +57,5 @@ def showImages():
 
 
 if __name__ == '__main__':
-    showImages()
+    global cnn
+    cnn.train(getImageData())
