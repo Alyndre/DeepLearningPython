@@ -14,13 +14,8 @@ def getData(balance_ones=True):
         if first:
             first = False
         else:
-<<<<<<< HEAD
             #line.rstrip('\x00')
             row = line.split(',')
-            #row[0].replace('\x00','')
-=======
-            row = line.split(',')
->>>>>>> 3a4e34d1a74b698d4d76308775e273d7a4d62456
             Y.append(int(row[0]))
             X.append([int(p) for p in row[1].split()])
 
