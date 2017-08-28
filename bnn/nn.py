@@ -4,110 +4,83 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as dts
 import datetime
 import tensorflow as tf
+from util import getData, processData
 
-def shuffle_in_unison(a, b):
-    # courtsey http://stackoverflow.com/users/190280/josh-bleecher-snyder
-    assert len(a) == len(b)
-    shuffled_a = np.empty(a.shape, dtype=a.dtype)
-    shuffled_b = np.empty(b.shape, dtype=b.dtype)
-    permutation = np.random.permutation(len(a))
-    for old_index, new_index in enumerate(permutation):
-        shuffled_a[new_index] = a[old_index]
-        shuffled_b[new_index] = b[old_index]
-    return shuffled_a, shuffled_b
+class HiddenLayer(object):
+    def __init__(self, x, y):
+        shape = [x, y]
+        self.weights = tf.Variable(tf.truncated_normal(shape, stddev=0.1))
+        self.biases = tf.Variable(tf.constant(0.1, shape=[y]))
 
+    def forward(self, X):
+        layer = tf.nn.relu(tf.matmul(X, self.weights) + self.biases)
+        return layer
 
-def create_Xt_Yt(X, Y):
-    newX = []# np.ndarray(shape=len(X)-20, 21)
-    newY = [] # np.ndarray(shape=len(X)-20, 1)
+class NN(object):
+    def __init__(self, hidden_layer_sizes, output_shape):
+        x, y = output_shape
+        self.W = tf.Variable(tf.truncated_normal(output_shape, stddev=0.1))
+        self.B = tf.Variable(tf.constant(0.1, shape=[y]))
+        self.hidden_layers = []
 
-    for index in range(len(X)):
-        if index > 20:
-            newY.append(Y[index])
-            r = [*X[index-20: index], *Y[index-20: index-1]]
-            newX.append(r)
+        for input_c, output_c in hidden_layer_sizes:
+            layer = HiddenLayer(input_c, output_c)
+            self.hidden_layers.append(layer)
 
-    
-    print(newX[len(newX)-1])
-    
-    X_train = X[0:len(X) - 300]
-    Y_train = Y[0:len(Y) - 300]
-    
-    X_train, Y_train = shuffle_in_unison(np.array(X_train), np.array(Y_train))
+    def forward(self, X):
+        Z = X
+        #Z = tf.reshape(Z, [-1, np.prod(Z_shape[1:])])
 
-    X_test = X[len(X) - 300:]
-    Y_test = Y[len(X) - 300:]
+        for hidden in self.hidden_layers:
+            Z = hidden.forward(Z)
 
-    return X_train, X_test, Y_train, Y_test
+        Z = tf.matmul(Z, self.W) + self.B
+        return Z
 
-def getData(start, end):
-    r = requests.get('https://api.coindesk.com/v1/bpi/historical/close.json?start=' + start +'&end=' + end)
-    print('https://api.coindesk.com/v1/bpi/historical/close.json?start=' + start +'&end=' + end);
-    return r.json()["bpi"]
+    def train(self, X, Y, Xt, Yt, epochs, batch_sz=1, learning_rate = 10e-4, decay = 0.99999, momentum = 0.99):
+        X = X.astype(np.float64)
+        Y = y2indicator(Y).astype(np.float64)
+        K = len(set(Y))
+        # reshape X for tf: N x w x h x c
+        #X = X.transpose((0, 2, 3, 1))
+        #N, width, height, c = X.shape
 
-def processData(data):
-    lists = sorted(data.items())
+        INPUTS = tf.placeholder(tf.float64, shape=(None, len(X[0])))
+        TARGETS = tf.placeholder(tf.float64, shape=(None, 1))
 
-    x, y = zip(*lists)
-    dates = [datetime.datetime.strptime(date, "%Y-%m-%d") for date in x]
-    dates = dts.date2num(dates)
-    
-    return create_Xt_Yt(dates, y)
+        OUTPUTS = self.forward(INPUTS)
+        prediction = self.forward(INPUTS)
 
-def weight_variable(shape):
-  initial = tf.truncated_normal(shape, stddev=0.1)
-  return tf.Variable(initial)
+        loss = tf.losses.mean_squared_error(labels=TARGETS, predictions=OUTPUTS)
+        train_step = tf.train.AdamOptimizer(1e-2).minimize(loss) # tf.train.RMSPropOptimizer(learning_rate, decay, momentum).minimize(loss)
 
-def bias_variable(shape):
-  initial = tf.constant(0.1, shape=shape)
-  return tf.Variable(initial)
+        # Compare network output vs target
+        correct_prediction = tf.equal(prediction, TARGETS)
+        # Cast bools to float64 and take the mean
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float64))
 
-def main(X_train, X_test, Y_train, Y_test, lr = 1e-4):
-    I = 2*20
-    L1 = 500
-    L2 = 300
-    O = 1
-
-    INPUT = tf.placeholder(tf.float32, [None, I])
-    TARGET = tf.placeholder(tf.float32, [None, O])
-
-    WEIGHT1 = weight_variable([I, L1])
-    BIAS1 = bias_variable([L1])
-
-    WEIGHT2 = weight_variable([L1, L2])
-    BIAS2 = bias_variable([L2])
-
-    WEIGHT3 = weight_variable([L2, O])
-    BIAS3 = bias_variable([O])
-
-    DROPOUT = tf.placeholder(tf.float32)
-    LAYER1 = tf.nn.relu(tf.matmul(INPUT, WEIGHT1) + BIAS1)
-    LAYER1_DROP = tf.nn.dropout(LAYER1, DROPOUT)
-    LAYER2 = tf.nn.relu(tf.matmul(LAYER1_DROP, WEIGHT2) + BIAS2)
-    LAYER2_DROP = tf.nn.dropout(LAYER2, DROPOUT)
-    OUTPUT = tf.matmul(LAYER2_DROP, WEIGHT3) + BIAS3
-
-    cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=TARGET, logits=OUTPUT))
-    train_step = tf.train.AdamOptimizer(lr).minimize(cross_entropy) # tf.train.RMSPropOptimizer(10e-4, decay=0.99999, momentum=0.99).minimize(cross_entropy)
-
-    sess = tf.InteractiveSession()
-    tf.global_variables_initializer().run()
-    # Train
-    for _ in range(1000):
-
-        batch_xs, batch_ys = mnist.train.next_batch(100)
-        sess.run(train_step, feed_dict={INPUT: input_data, TARGET: target_data, DROPOUT: 1.0})
-
-    # Test trained model
-    correct_prediction = tf.equal(OUTPUT, TARGET)
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    print(sess.run(accuracy, feed_dict={INPUT: X_test, TARGET: Y_test, DROPOUT: 1.0}))
-
+        n_batches = N // batch_sz
+        with tf.Session() as session:
+            session.run(tf.global_variables_initializer())
+            for e in range(epochs):
+                for i in range(n_batches):
+                    Xbatch = X[i*batch_sz:(i*batch_sz+batch_sz)]
+                    Ybatch = Y[i*batch_sz:(i*batch_sz+batch_sz)]
+                    train_step.run(feed_dict={INPUTS: Xbatch, TARGETS: Ybatch})
+                    if (i % 20 == 0):
+                        #train_accuracy = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid, keep_prob: 1.0})
+                        p = session.run(prediction, feed_dict={INPUTS: Xvalid, TARGETS: Yvalid})
+                        error = np.mean(Yvalid_flat != p)
+                        acc = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid})
+                        print("step: ", e, " error rate: ", error, " accuracy: ", acc)
 
 if __name__ == "__main__":
     data = getData('2012-01-10', '2017-08-25')
 
     X_train, X_test, Y_train, Y_test = processData(data)
 
-    # main(X_train, X_test, Y_train, Y_test)
-    
+    print(X_train.shape)
+    print(Y_train.shape)
+
+    nn = NN([(39, 500), (500, 300)], [300, 1])
+    print(nn.forward(X_train))
