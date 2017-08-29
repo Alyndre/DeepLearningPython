@@ -41,7 +41,7 @@ def create_Xt_Yt(X, Y):
     X_train = newX[0:len(newX) - 300]
     Y_train = newY[0:len(newY) - 300]
     
-    X_train, Y_train = shuffle_in_unison(np.array(X_train), np.array(Y_train))
+    X_train, Y_train = shuffle_in_unison(np.array(X_train).astype(np.float32), np.array(Y_train).astype(np.float32))
 
     X_test = newX[len(newX) - 300:]
     Y_test = newY[len(newY) - 300:]

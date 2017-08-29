@@ -38,15 +38,13 @@ class NN(object):
         return Z
 
     def train(self, X, Y, Xt, Yt, epochs, batch_sz=1, learning_rate = 10e-4, decay = 0.99999, momentum = 0.99):
-        X = X.astype(np.float64)
-        Y = y2indicator(Y).astype(np.float64)
-        K = len(set(Y))
+        N =1
         # reshape X for tf: N x w x h x c
         #X = X.transpose((0, 2, 3, 1))
         #N, width, height, c = X.shape
 
-        INPUTS = tf.placeholder(tf.float64, shape=(None, len(X[0])))
-        TARGETS = tf.placeholder(tf.float64, shape=(None, 1))
+        INPUTS = tf.placeholder(tf.float32, shape=(None, len(X[0])))
+        TARGETS = tf.placeholder(tf.float32, shape=(None, 1))
 
         OUTPUTS = self.forward(INPUTS)
         prediction = self.forward(INPUTS)
@@ -57,22 +55,22 @@ class NN(object):
         # Compare network output vs target
         correct_prediction = tf.equal(prediction, TARGETS)
         # Cast bools to float64 and take the mean
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float64))
+        accuracy = tf.losses.mean_squared_error(labels=TARGETS, predictions=OUTPUTS)
 
-        n_batches = N // batch_sz
         with tf.Session() as session:
             session.run(tf.global_variables_initializer())
             for e in range(epochs):
-                for i in range(n_batches):
-                    Xbatch = X[i*batch_sz:(i*batch_sz+batch_sz)]
-                    Ybatch = Y[i*batch_sz:(i*batch_sz+batch_sz)]
+                for i in range(len(X)):
+                    Xbatch = X[i:i]
+                    Ybatch = Y[i:i]
                     train_step.run(feed_dict={INPUTS: Xbatch, TARGETS: Ybatch})
                     if (i % 20 == 0):
                         #train_accuracy = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid, keep_prob: 1.0})
-                        p = session.run(prediction, feed_dict={INPUTS: Xvalid, TARGETS: Yvalid})
-                        error = np.mean(Yvalid_flat != p)
-                        acc = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid})
-                        print("step: ", e, " error rate: ", error, " accuracy: ", acc)
+                        p = session.run(prediction, feed_dict={INPUTS: X_test, TARGETS: Y_test})
+                        #error = np.mean(Yvalid_flat != p)
+                        acc = accuracy.eval(feed_dict={INPUTS: X_test, TARGETS: Y_test})
+                        # l = tf.losses.mean_squared_error(feed_dict={INPUTS: X_test, TARGETS: Y_test})
+                        print("step: ", e, "prediction: ", p, "loss: ", 0, " accuracy: ", acc)
 
 if __name__ == "__main__":
     data = getData('2012-01-10', '2017-08-25')
@@ -83,4 +81,12 @@ if __name__ == "__main__":
     print(Y_train.shape)
 
     nn = NN([(39, 500), (500, 300)], [300, 1])
-    print(nn.forward(X_train))
+
+    init = tf.initialize_all_variables()
+
+    sess = tf.Session()
+    sess.run(init)
+    v = sess.run(nn.forward(X_train))    
+    print(v)
+
+    nn.train(X_train, Y_train, X_test, Y_test, 50)
