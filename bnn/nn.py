@@ -43,13 +43,13 @@ class NN(object):
         #X = X.transpose((0, 2, 3, 1))
         #N, width, height, c = X.shape
 
-        INPUTS = tf.placeholder(tf.float32, shape=(None, len(X[0])))
-        TARGETS = tf.placeholder(tf.float32, shape=(None, 1))
+        INPUTS = tf.placeholder(tf.float32)
+        TARGETS = tf.placeholder(tf.float32)
 
         OUTPUTS = self.forward(INPUTS)
         prediction = self.forward(INPUTS)
 
-        loss = tf.losses.mean_squared_error(labels=TARGETS, predictions=OUTPUTS)
+        loss = tf.reduce_sum(tf.squared_difference(TARGETS, OUTPUTS)) # tf.losses.mean_squared_error(labels=TARGETS, predictions=OUTPUTS)
         train_step = tf.train.AdamOptimizer(1e-2).minimize(loss) # tf.train.RMSPropOptimizer(learning_rate, decay, momentum).minimize(loss)
 
         # Compare network output vs target
@@ -60,17 +60,17 @@ class NN(object):
         with tf.Session() as session:
             session.run(tf.global_variables_initializer())
             for e in range(epochs):
-                for i in range(len(X)):
-                    Xbatch = X[i:i]
-                    Ybatch = Y[i:i]
+                for (Xbatch, Ybatch) in zip(X, Y):
+                    print(Xbatch)
+                    print(Ybatch)
                     train_step.run(feed_dict={INPUTS: Xbatch, TARGETS: Ybatch})
                     if (i % 20 == 0):
                         #train_accuracy = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid, keep_prob: 1.0})
-                        p = session.run(prediction, feed_dict={INPUTS: X_test, TARGETS: Y_test})
+                        p = session.run(prediction, feed_dict={INPUTS: Xbatch, TARGETS: Ybatch})
                         #error = np.mean(Yvalid_flat != p)
-                        acc = accuracy.eval(feed_dict={INPUTS: X_test, TARGETS: Y_test})
+                        acc = accuracy.eval(feed_dict={INPUTS: Xbatch, TARGETS: Ybatch})
                         # l = tf.losses.mean_squared_error(feed_dict={INPUTS: X_test, TARGETS: Y_test})
-                        print("step: ", e, "prediction: ", p, "loss: ", 0, " accuracy: ", acc)
+                        print("step: ", e, "prediction: ", p, "loss: ", loss, " accuracy: ", acc)
 
 if __name__ == "__main__":
     data = getData('2012-01-10', '2017-08-25')
@@ -87,6 +87,6 @@ if __name__ == "__main__":
     sess = tf.Session()
     sess.run(init)
     v = sess.run(nn.forward(X_train))    
-    print(v)
+    #print(v)
 
     nn.train(X_train, Y_train, X_test, Y_test, 50)
