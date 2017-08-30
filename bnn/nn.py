@@ -11,6 +11,7 @@ class HiddenLayer(object):
         shape = [x, y]
         self.weights = tf.Variable(tf.truncated_normal(shape, stddev=0.1))
         self.biases = tf.Variable(tf.constant(0.1, shape=[y]))
+        print(self.weights.shape)
 
     def forward(self, X):
         layer = tf.nn.relu(tf.matmul(X, self.weights) + self.biases)
@@ -38,55 +39,48 @@ class NN(object):
         return Z
 
     def train(self, X, Y, Xt, Yt, epochs, batch_sz=1, learning_rate = 10e-4, decay = 0.99999, momentum = 0.99):
-        N =1
+        N = X.shape[0]
         # reshape X for tf: N x w x h x c
-        #X = X.transpose((0, 2, 3, 1))
+        #X = np.transpose(X)
+        print(X.shape)
         #N, width, height, c = X.shape
 
-        INPUTS = tf.placeholder(tf.float32)
-        TARGETS = tf.placeholder(tf.float32)
+        INPUTS = tf.placeholder(tf.float32, shape=[None, X.shape[1]])
+        TARGETS = tf.placeholder(tf.float32, shape=[None, Y.shape[1]])
 
         OUTPUTS = self.forward(INPUTS)
-        prediction = self.forward(INPUTS)
 
         loss = tf.reduce_sum(tf.squared_difference(TARGETS, OUTPUTS)) # tf.losses.mean_squared_error(labels=TARGETS, predictions=OUTPUTS)
-        train_step = tf.train.AdamOptimizer(1e-2).minimize(loss) # tf.train.RMSPropOptimizer(learning_rate, decay, momentum).minimize(loss)
+        accuracy = tf.losses.mean_squared_error(labels=TARGETS, predictions=OUTPUTS)
+        cost = tf.reduce_sum(tf.pow(OUTPUTS-TARGETS, 2))/(2*N)
+        train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
+        # tf.train.RMSPropOptimizer(learning_rate, decay, momentum).minimize(accuracy) 
+        # tf.train.AdamOptimizer(1e-2).minimize(accuracy) # 
 
         # Compare network output vs target
-        correct_prediction = tf.equal(prediction, TARGETS)
+        correct_prediction = tf.equal(OUTPUTS, TARGETS)
         # Cast bools to float64 and take the mean
-        accuracy = tf.losses.mean_squared_error(labels=TARGETS, predictions=OUTPUTS)
 
         with tf.Session() as session:
             session.run(tf.global_variables_initializer())
+            n_batches = N // batch_sz
             for e in range(epochs):
-                for (Xbatch, Ybatch) in zip(X, Y):
-                    print(Xbatch)
-                    print(Ybatch)
+                for j in range(n_batches):
+                    Xbatch = X[j*batch_sz:(j*batch_sz+batch_sz)]
+                    Ybatch = Y[j*batch_sz:(j*batch_sz+batch_sz)]
                     train_step.run(feed_dict={INPUTS: Xbatch, TARGETS: Ybatch})
-                    if (i % 20 == 0):
-                        #train_accuracy = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid, keep_prob: 1.0})
-                        p = session.run(prediction, feed_dict={INPUTS: Xbatch, TARGETS: Ybatch})
-                        #error = np.mean(Yvalid_flat != p)
-                        acc = accuracy.eval(feed_dict={INPUTS: Xbatch, TARGETS: Ybatch})
-                        # l = tf.losses.mean_squared_error(feed_dict={INPUTS: X_test, TARGETS: Y_test})
-                        print("step: ", e, "prediction: ", p, "loss: ", loss, " accuracy: ", acc)
+                if (e % 100 == 0):
+                    #train_accuracy = accuracy.eval(feed_dict={INPUTS: Xvalid, TARGETS: Yvalid, keep_prob: 1.0})
+                    p = session.run(OUTPUTS, feed_dict={INPUTS: Xt, TARGETS: Yt})
+                    #error = np.mean(Yvalid_flat != p)
+                    acc = accuracy.eval(feed_dict={OUTPUTS: p, TARGETS: Yt})
+                    # l = tf.losses.mean_squared_error(feed_dict={INPUTS: X_test, TARGETS: Y_test})
+                    print("step: ", e,  " accuracy: ", acc)
 
 if __name__ == "__main__":
     data = getData('2012-01-10', '2017-08-25')
 
     X_train, X_test, Y_train, Y_test = processData(data)
 
-    print(X_train.shape)
-    print(Y_train.shape)
-
-    nn = NN([(39, 500), (500, 300)], [300, 1])
-
-    init = tf.initialize_all_variables()
-
-    sess = tf.Session()
-    sess.run(init)
-    v = sess.run(nn.forward(X_train))    
-    #print(v)
-
-    nn.train(X_train, Y_train, X_test, Y_test, 50)
+    nn = NN([(39, 500)], [500, 1])
+    nn.train(X_train, Y_train, X_test, Y_test, 10000)

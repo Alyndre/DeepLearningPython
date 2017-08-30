@@ -38,13 +38,13 @@ def create_Xt_Yt(X, Y):
             r = [*X[index-20: index], *Y[index-20: index-1]]
             newX.append(r)
     
-    X_train = newX[0:len(newX) - 300]
-    Y_train = newY[0:len(newY) - 300]
+    X_train = newX[0:len(newX) - 60]
+    Y_train = newY[0:len(newY) - 60]
     
     X_train, Y_train = shuffle_in_unison(np.array(X_train).astype(np.float32), np.array(Y_train).astype(np.float32))
 
-    X_test = newX[len(newX) - 300:]
-    Y_test = newY[len(newY) - 300:]
+    X_test = newX[len(newX) - 60:]
+    Y_test = newY[len(newY) - 60:]
 
     return np.array(X_train), np.array(X_test), np.array(Y_train), np.array(Y_test)
 
