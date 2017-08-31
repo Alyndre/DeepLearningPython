@@ -3,18 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as dts
 import datetime
-import tensorflow as tf
-
-
-def init_weight_and_bias(M1, M2):
-    W = np.random.randn(M1, M2) / np.sqrt(M1)
-    b = np.zeros(M2)
-    return W.astype(np.float32), b.astype(np.float32)
-
-
-def error_rate(targets, predictions):
-    return np.mean(targets - predictions)
-
 
 def shuffle_in_unison(a, b):
     # courtsey http://stackoverflow.com/users/190280/josh-bleecher-snyder
@@ -57,6 +45,8 @@ def processData(data):
     lists = sorted(data.items())
 
     x, y = zip(*lists)
+    print(x)
+    print(y)
     dates = [datetime.datetime.strptime(date, "%Y-%m-%d") for date in x]
     dates = dts.date2num(dates)
     
