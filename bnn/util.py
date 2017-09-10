@@ -16,14 +16,14 @@ def shuffle_in_unison(a, b):
     return shuffled_a, shuffled_b
 
 
-def create_Xt_Yt(X, Y):
+def create_Xt_Yt(P):
     newX = []# np.ndarray(shape=len(X)-20, 21)
     newY = [] # np.ndarray(shape=len(X)-20, 1)
 
-    for index in range(len(X)):
+    for index in range(len(P)):
         if index > 20:
-            newY.append([Y[index]])
-            r = [*X[index-20: index], *Y[index-20: index-1]]
+            newY.append([P[index]])
+            r = [*P[index-20: index-1]]
             newX.append(r)
     
     X_train = newX[0:len(newX) - 60]
@@ -44,10 +44,6 @@ def getData(start, end):
 def processData(data):
     lists = sorted(data.items())
 
-    x, y = zip(*lists)
-    print(x)
-    print(y)
-    dates = [datetime.datetime.strptime(date, "%Y-%m-%d") for date in x]
-    dates = dts.date2num(dates)
+    d, p = zip(*lists)
     
-    return create_Xt_Yt(dates, y)
+    return create_Xt_Yt(p)
