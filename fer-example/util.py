@@ -65,7 +65,7 @@ def getData(balance_ones=True):
     Y = []
     X = []
     first = True
-    for line in open('fer2013.csv'):
+    for line in open('fer-example/fer2013.csv'):
         if first:
             first = False
         else:
@@ -82,7 +82,7 @@ def getData(balance_ones=True):
         X1 = np.repeat(X1, 9, axis=0)
         X = np.vstack([X0, X1])
         Y = np.concatenate((Y0, [1]*len(X1)))
-
+    print(X.shape)
     return X, Y
 
 

@@ -29,7 +29,7 @@ class ANN(object):
     def __init__(self, hidden_layer_sizes):
         self.hidden_layer_sizes = hidden_layer_sizes
 
-    def fit(self, X, Y, learning_rate=10e-7, mu=0.99, decay=0.999, reg=10e-3, epochs=400, batch_sz=100, show_fig=False):
+    def fit(self, X, Y, learning_rate=10e-7, mu=0.99, decay=0.999, reg=10e-3, epochs=400, batch_sz=1, show_fig=False):
         K = len(set(Y)) # won't work later b/c we turn it into indicator
 
         # make a validation set
@@ -65,7 +65,6 @@ class ANN(object):
         tfX = tf.placeholder(tf.float32, shape=(None, D), name='X')
         tfT = tf.placeholder(tf.float32, shape=(None, K), name='T')
         act = self.forward(tfX)
-
         rcost = reg*sum([tf.nn.l2_loss(p) for p in self.params])
         cost = tf.reduce_mean(
             tf.nn.softmax_cross_entropy_with_logits(
@@ -86,6 +85,8 @@ class ANN(object):
                 for j in range(n_batches):
                     Xbatch = X[j*batch_sz:(j*batch_sz+batch_sz)]
                     Ybatch = Y[j*batch_sz:(j*batch_sz+batch_sz)]
+                    print(Xbatch.shape)
+                    print(Ybatch.shape)
 
                     session.run(train_op, feed_dict={tfX: Xbatch, tfT: Ybatch})
 
